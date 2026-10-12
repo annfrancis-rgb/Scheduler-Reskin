@@ -12,7 +12,7 @@
 /* ============ aiRA tokens (v1.1) — definition block ============ */
 :root{
   --aira-bg-default:#FFFFFF; --aira-bg-subtle:#FBFCFD; --aira-bg-muted:#EEF1F4;
-  --aira-bg-canvas:#F6F8FA; --aira-bg-elevated:#FFFFFF;
+  --aira-bg-canvas:#F6F8FA; --aira-bg-elevated:#FFFFFF; --aira-bg-inverse:#111827; --aira-bg-overlay:rgba(17,24,39,.5);
   --aira-bg-brand:#3438C9; --aira-bg-brand-hover:#252AA0;
   --aira-bg-hover:#F6F8FA; --aira-bg-selected:#EEF0FF;
   --aira-text-primary:#111827; --aira-text-secondary:#364152; --aira-text-tertiary:#6B7785;
@@ -123,7 +123,7 @@ body{
 .sec-head:focus-visible{outline:2px solid transparent;box-shadow:var(--aira-shadow-focus);border-radius:var(--aira-radius-xs)}
 .sec-head-main{flex:1;min-width:0}
 .sec-title{font-size:14px;font-weight:600;color:var(--aira-text-primary)}
-.sec-head .chev{color:var(--aira-text-tertiary);flex:none;display:flex;transition:transform var(--motion-base)}
+.sec-head .chev{color:var(--aira-text-tertiary);flex:none;width:32px;height:32px;display:grid;place-items:center;transition:transform var(--motion-base)}
 .block[data-open="false"] .sec-head .chev{transform:rotate(-90deg)}
 .sec-head .sentence{margin:0}
 /* collapsed-only summary shown beside a section title */
@@ -259,6 +259,18 @@ body{
   .panel{flex:none;border-inline-start:none;border-top:1px solid var(--aira-border-default)}
   .body{overflow:visible}
 }
+/* in-page modal (window.confirm is blocked in sandboxed artifact iframes) */
+.modal-overlay{position:fixed;inset:0;background:var(--aira-bg-overlay);display:none;align-items:center;justify-content:center;z-index:100;padding:var(--aira-sp-4)}
+.modal-overlay.open{display:flex}
+.modal{background:var(--aira-bg-elevated);border-radius:var(--aira-radius-lg);box-shadow:var(--aira-shadow-lg);max-width:440px;width:100%;padding:var(--aira-sp-5)}
+.modal h3{margin:0 0 var(--aira-sp-2);font-size:16px;line-height:24px;font-weight:600;color:var(--aira-text-primary)}
+.modal .mbody{font-size:14px;line-height:22px;color:var(--aira-text-secondary);margin-bottom:var(--aira-sp-5);white-space:pre-line}
+.modal .mbody .list{margin-top:var(--aira-sp-2);color:var(--aira-text-primary)}
+.modal-foot{display:flex;justify-content:flex-end;gap:var(--aira-sp-3)}
+/* toast */
+.toast{position:fixed;left:50%;bottom:var(--aira-sp-5);transform:translateX(-50%) translateY(8px);background:var(--aira-bg-inverse);color:var(--aira-text-inverse);font-size:13px;padding:var(--aira-sp-3) var(--aira-sp-4);border-radius:var(--aira-radius-md);box-shadow:var(--aira-shadow-lg);display:flex;align-items:center;gap:var(--aira-sp-2);opacity:0;pointer-events:none;transition:opacity var(--motion-base),transform var(--motion-base);z-index:110}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast svg{color:var(--aira-text-success)}
 svg{display:block}
 </style>
 </head>
@@ -412,7 +424,7 @@ svg{display:block}
         <div class="preview-frame" id="previewFrame">
           <div class="email">
             <h3>Daily Performance Digest</h3>
-            <div class="esub">Sample data — the actual send uses live metrics · Rendered Oct 11, 21:32</div>
+            <div class="esub">Sample data — the actual send uses live metrics · Rendered Oct 11, 21:32 IST</div>
             <div class="kpis">
               <div class="kpi"><div class="k">Revenue</div><div class="v">₹16,09,400</div></div>
               <div class="kpi"><div class="k">Avg txn value</div><div class="v">₹1,842</div></div>
@@ -452,11 +464,50 @@ svg{display:block}
   </div>
 </div>
 
+<!-- in-page confirm modal + toast -->
+<div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <h3 id="modalTitle"></h3>
+    <div class="mbody" id="modalBody"></div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" id="modalCancel">Cancel</button>
+      <button class="btn btn-primary" id="modalConfirm">Confirm</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+  <span id="toastMsg"></span>
+</div>
+
 <script>
 (function(){
   "use strict";
   var $ = function(id){return document.getElementById(id);};
   function hhmm(h,m){return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0");}
+  function esc(s){return String(s).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];});}
+
+  /* ===== in-page modal + toast (replace window.confirm/alert, blocked in artifact iframe) ===== */
+  var _onConfirm=null;
+  function openConfirm(opts){
+    $("modalTitle").textContent=opts.title||"Confirm";
+    $("modalBody").innerHTML=opts.bodyHtml||"";
+    $("modalConfirm").textContent=opts.confirmLabel||"Confirm";
+    _onConfirm=opts.onConfirm||null;
+    $("modalOverlay").classList.add("open");
+    $("modalConfirm").focus();
+  }
+  function closeModal(){ $("modalOverlay").classList.remove("open"); _onConfirm=null; }
+  var _toastTimer=null;
+  function showToast(msg){
+    $("toastMsg").textContent=msg; $("toast").classList.add("show");
+    clearTimeout(_toastTimer); _toastTimer=setTimeout(function(){ $("toast").classList.remove("show"); },3500);
+  }
+  $("modalCancel").addEventListener("click",closeModal);
+  $("modalOverlay").addEventListener("click",function(e){ if(e.target===$("modalOverlay")) closeModal(); });
+  $("modalConfirm").addEventListener("click",function(){ var f=_onConfirm; closeModal(); if(f) f(); });
+  document.addEventListener("keydown",function(e){ if(e.key==="Escape" && $("modalOverlay").classList.contains("open")) closeModal(); });
+  function recipList(){ return "<div class='list'>"+recipients.map(function(r){return "• "+esc(r);}).join("<br>")+"</div>"; }
 
   /* ===== AiraDropdown ===== */
   function initDropdown(dd, opts, onChange){
@@ -599,8 +650,12 @@ svg{display:block}
     if(deployed) return;
     var n=recipients.length;
     var when=isCron?(describeCron($("cronInput").value)||"the configured cron"):describeSimple().when;
-    if(window.confirm("Deploy?\n\nThis makes the schedule live: "+when+", to "+n+" recipient"+(n===1?"":"s")+":\n• "+recipients.join("\n• ")))
-      setDeployed(true);
+    openConfirm({
+      title:"Deploy this schedule?",
+      bodyHtml:"This makes the schedule live — <b>"+esc(when)+"</b> — sending to "+n+" recipient"+(n===1?"":"s")+":"+recipList(),
+      confirmLabel:"Deploy",
+      onConfirm:function(){ setDeployed(true); showToast("Deployed — the schedule is now live."); }
+    });
   });
 
   /* ===== recipients ===== */
@@ -645,9 +700,12 @@ svg{display:block}
   /* ===== run now / test run guardrail ===== */
   $("runNow").addEventListener("click",function(){
     var n=recipients.length;
-    var verb=deployed?"Run now":"Send a test digest";
-    if(window.confirm(verb+"?\n\nThis emails "+n+" recipient"+(n===1?"":"s")+" immediately:\n• "+recipients.join("\n• ")))
-      window.alert((deployed?"Digest":"Test digest")+" sent to "+n+" recipient"+(n===1?"":"s")+".");
+    openConfirm({
+      title:deployed?"Run now?":"Send a test run?",
+      bodyHtml:"This emails "+n+" recipient"+(n===1?"":"s")+" immediately:"+recipList(),
+      confirmLabel:deployed?"Run now":"Send test run",
+      onConfirm:function(){ showToast((deployed?"Digest":"Test digest")+" sent to "+n+" recipient"+(n===1?"":"s")+"."); }
+    });
   });
 
   /* ===== active toggle ===== */
