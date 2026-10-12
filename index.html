@@ -474,6 +474,8 @@ svg{display:block}
   "use strict";
   var $ = function(id){return document.getElementById(id);};
   function hhmm(h,m){return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0");}
+  // "Asia/Kolkata (IST)" -> "IST (Asia/Kolkata)"; "UTC" -> "UTC"
+  function tzDisplay(v){ var m=String(v).match(/^(.*?)\s*\(([^)]+)\)\s*$/); return m ? (m[2]+" ("+m[1]+")") : v; }
   function esc(s){return String(s).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];});}
 
   /* ===== in-page modal + toast (replace window.confirm/alert, blocked in artifact iframe) ===== */
@@ -588,7 +590,7 @@ svg{display:block}
 
   /* ===== plain-language sentence (the live readout, above the controls) ===== */
   function describeSimple(){
-    var h=+DD.hour.value,m=+DD.min.value,v=DD.freq.value,tz=String(DD.tz.value).split(" ")[0];
+    var h=+DD.hour.value,m=+DD.min.value,v=DD.freq.value,tz=tzDisplay(DD.tz.value);
     var when = v==="daily"?"Every day" : v==="weekly"?("Every "+DD.dow.value) : ("On day "+DD.dom.value+" of each month");
     return {when:when+" at "+hhmm(h,m), tz:tz};
   }
@@ -612,14 +614,14 @@ svg{display:block}
   function updateSentence(){
     var el=$("sentence"), when, tz, cron;
     if(isCron){
-      var expr=$("cronInput").value; tz=String(DD.tz2.value).split(" ")[0];
+      var expr=$("cronInput").value; tz=tzDisplay(DD.tz2.value);
       var eng=describeCron(expr);
       when = eng || ("Custom cron "+expr);
       cron = /^(\S+\s+){4}\S+$/.test(expr.trim()) ? expr.trim() : null;
     }else{
       var d=describeSimple(); when=d.when; tz=d.tz; cron=simpleToCron();
     }
-    el.innerHTML="<b>Schedule:</b> "+when+" <span class='muted'>("+tz+")</span>"
+    el.innerHTML="<b>Schedule:</b> "+when+" <span class='muted'>"+tz+"</span>"
       + " <span class='muted'>·</span> <b>Next run:</b> "+nextRunText();
   }
 
@@ -636,10 +638,10 @@ svg{display:block}
   $("deployBtn").addEventListener("click",function(){
     if(deployed) return;
     var n=recipients.length;
-    var d=isCron?{when:(describeCron($("cronInput").value)||"the configured cron"),tz:String(DD.tz2.value).split(" ")[0]}:describeSimple();
+    var d=isCron?{when:(describeCron($("cronInput").value)||"the configured cron"),tz:tzDisplay(DD.tz2.value)}:describeSimple();
     openConfirm({
       title:"Deploy this schedule?",
-      bodyHtml:"This makes the schedule live — <b>"+esc(d.when)+"</b> <span style='color:var(--aira-text-tertiary)'>("+esc(d.tz)+")</span> — sending to "+n+" recipient"+(n===1?"":"s")+":"+recipList(),
+      bodyHtml:"This makes the schedule live — <b>"+esc(d.when)+"</b> <span style='color:var(--aira-text-tertiary)'>"+esc(d.tz)+"</span> — sending to "+n+" recipient"+(n===1?"":"s")+":"+recipList(),
       confirmLabel:"Deploy",
       onConfirm:function(){ setDeployed(true); showToast("Deployed — the schedule is now live."); }
     });
