@@ -475,6 +475,8 @@ svg{display:block}
   var $ = function(id){return document.getElementById(id);};
   var CONFIG_NAME = "Daily Performance Digest";
   function hhmm(h,m){return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0");}
+  function h12(h,m){var ap=h<12?"AM":"PM";var hh=h%12||12;return hh+":"+String(m).padStart(2,"0")+" "+ap;}
+  function timeStr(h,m){return hhmm(h,m)+" ("+h12(h,m)+")";} // "21:35 (9:35 PM)"
   // "Asia/Kolkata (IST)" -> "IST (Asia/Kolkata)"; "UTC" -> "UTC"
   function tzDisplay(v){ var m=String(v).match(/^(.*?)\s*\(([^)]+)\)\s*$/); return m ? (m[2]+" ("+m[1]+")") : v; }
   function esc(s){return String(s).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];});}
@@ -593,7 +595,7 @@ svg{display:block}
   function describeSimple(){
     var h=+DD.hour.value,m=+DD.min.value,v=DD.freq.value,tz=tzDisplay(DD.tz.value);
     var when = v==="daily"?"Every day" : v==="weekly"?("Every "+DD.dow.value) : ("On day "+DD.dom.value+" of each month");
-    return {when:when+" at "+hhmm(h,m), tz:tz};
+    return {when:when+" at "+timeStr(h,m), tz:tz};
   }
   function simpleToCron(){
     var h=+DD.hour.value,m=+DD.min.value,v=DD.freq.value;
@@ -605,7 +607,7 @@ svg{display:block}
     var p=expr.trim().split(/\s+/); if(p.length!==5)return null;
     var m=p[0],h=p[1],dom=p[2],mon=p[3],dow=p[4];
     if(!/^\d+$/.test(m)||!/^\d+$/.test(h))return null;
-    var time=hhmm(+h,+m), days=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    var time=timeStr(+h,+m), days=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
     if(dom==="*"&&mon==="*"&&dow==="*")return "Every day at "+time;
     if(dom==="*"&&mon==="*"&&/^\d$/.test(dow))return "Every "+days[+dow]+" at "+time;
     if(/^\d+$/.test(dom)&&mon==="*"&&dow==="*")return "On day "+dom+" of each month at "+time;
