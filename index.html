@@ -101,6 +101,7 @@ body{
 .btn-secondary:hover{background:var(--aira-bg-hover)}
 .btn-ghost{background:transparent;color:var(--aira-text-secondary)}
 .btn-ghost:hover{background:var(--aira-bg-hover)}
+.btn:disabled{background:var(--aira-bg-muted);color:var(--aira-text-disabled);border-color:var(--aira-border-subtle);cursor:default}
 .btn-sm{height:32px;padding:0 var(--aira-sp-3);font-size:13px}
 .iconbtn{
   width:32px;height:32px;border-radius:var(--aira-radius-sm);border:1px solid transparent;background:transparent;
@@ -243,13 +244,6 @@ body{
 .statusline a{color:var(--aira-text-link);text-decoration:none}
 .statusline a:hover{text-decoration:underline}
 .statusline .spacer{flex:1}
-.switch{display:inline-flex;align-items:center;gap:var(--aira-sp-2);cursor:pointer;color:var(--aira-text-secondary)}
-.switch input{position:absolute;opacity:0;width:0;height:0}
-.track{width:36px;height:20px;border-radius:var(--aira-radius-pill);background:var(--aira-border-strong);position:relative;transition:background var(--motion-fast);flex:none}
-.knob{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:var(--aira-radius-pill);background:var(--aira-bg-default);transition:left var(--motion-fast);box-shadow:var(--aira-shadow-sm)}
-.switch input:checked + .track{background:var(--aira-bg-brand)}
-.switch input:checked + .track .knob{left:18px}
-.switch input:focus-visible + .track{box-shadow:var(--aira-shadow-focus)}
 
 .lbl{font-size:12px;font-weight:600;color:var(--aira-text-secondary);margin-bottom:var(--aira-sp-2)}
 
@@ -310,11 +304,6 @@ svg{display:block}
       <div class="title">
         <h2>Daily Performance Digest (Test) <span class="tag">v3</span></h2>
       </div>
-      <label class="switch" id="activeSwitch" title="Pause without deleting the schedule" style="display:none">
-        <input type="checkbox" id="activeToggle" checked>
-        <span class="track"><span class="knob"></span></span>
-        <span id="activeLabel">Active</span>
-      </label>
       <button class="btn btn-primary btn-sm" id="deployBtn">Deploy</button>
       <button class="btn btn-secondary btn-sm" id="runNow">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 4 20 12 6 20 6 4"/></svg>
@@ -638,21 +627,19 @@ svg{display:block}
   var deployed=false;
   function setDeployed(on){
     deployed=on;
-    var dep=$("deployBtn"); dep.className="btn btn-ghost btn-sm"; dep.disabled=true; dep.textContent="Deployed";
-    dep.style.color="var(--aira-text-success)"; dep.style.cursor="default";
+    var dep=$("deployBtn"); dep.className="btn btn-secondary btn-sm"; dep.disabled=true; dep.textContent="Deployed";
     $("runNow").querySelector("svg").nextSibling.textContent=" Run now";
     var lr=$("lastRun");
     lr.style.display=""; lr.innerHTML="Last run — · <a href='#' onclick='return false'>View history</a>";
-    $("activeSwitch").style.display="";
     updateSentence();
   }
   $("deployBtn").addEventListener("click",function(){
     if(deployed) return;
     var n=recipients.length;
-    var when=isCron?(describeCron($("cronInput").value)||"the configured cron"):describeSimple().when;
+    var d=isCron?{when:(describeCron($("cronInput").value)||"the configured cron"),tz:String(DD.tz2.value).split(" ")[0]}:describeSimple();
     openConfirm({
       title:"Deploy this schedule?",
-      bodyHtml:"This makes the schedule live — <b>"+esc(when)+"</b> — sending to "+n+" recipient"+(n===1?"":"s")+":"+recipList(),
+      bodyHtml:"This makes the schedule live — <b>"+esc(d.when)+"</b> <span style='color:var(--aira-text-tertiary)'>("+esc(d.tz)+")</span> — sending to "+n+" recipient"+(n===1?"":"s")+":"+recipList(),
       confirmLabel:"Deploy",
       onConfirm:function(){ setDeployed(true); showToast("Deployed — the schedule is now live."); }
     });
@@ -707,9 +694,6 @@ svg{display:block}
       onConfirm:function(){ showToast((deployed?"Digest":"Test digest")+" sent to "+n+" recipient"+(n===1?"":"s")+"."); }
     });
   });
-
-  /* ===== active toggle ===== */
-  $("activeToggle").addEventListener("change",function(){ $("activeLabel").textContent=this.checked?"Active":"Paused"; });
 
   /* ===== preview — one view-mode axis: Desktop / Mobile / HTML ===== */
   $("vpDesktop").addEventListener("click",function(){setPreview("desktop");});
