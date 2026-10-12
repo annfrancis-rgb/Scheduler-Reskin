@@ -690,6 +690,9 @@ svg{display:block}
   if(ci&&cs){ ci.addEventListener("input",function(){ cs.classList.toggle("on", ci.value.trim().length>0); }); }
 
   updateSentence();
+
+  /* ===== prototype: view the deployed state directly via ?deployed (e.g. .../#deployed) ===== */
+  if((location.search + location.hash).toLowerCase().indexOf("deployed") > -1) setDeployed(true);
 })();
 </script>
 </body>
