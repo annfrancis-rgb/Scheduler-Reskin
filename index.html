@@ -302,7 +302,7 @@ svg{display:block}
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg>
       </div>
       <div class="title">
-        <h2>Daily Performance Digest (Test) <span class="tag">v3</span></h2>
+        <h2>Daily Performance Digest <span class="tag">v3</span></h2>
       </div>
       <button class="btn btn-primary btn-sm" id="deployBtn">Deploy</button>
       <button class="btn btn-secondary btn-sm" id="runNow">
@@ -473,7 +473,7 @@ svg{display:block}
 (function(){
   "use strict";
   var $ = function(id){return document.getElementById(id);};
-  var CONFIG_NAME = "Daily Performance Digest (Test)";
+  var CONFIG_NAME = "Daily Performance Digest";
   function hhmm(h,m){return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0");}
   // "Asia/Kolkata (IST)" -> "IST (Asia/Kolkata)"; "UTC" -> "UTC"
   function tzDisplay(v){ var m=String(v).match(/^(.*?)\s*\(([^)]+)\)\s*$/); return m ? (m[2]+" ("+m[1]+")") : v; }
@@ -640,9 +640,10 @@ svg{display:block}
     if(deployed) return;
     var n=recipients.length;
     var d=isCron?{when:(describeCron($("cronInput").value)||"the configured cron"),tz:tzDisplay(DD.tz2.value)}:describeSimple();
+    var whenLc=d.when.charAt(0).toLowerCase()+d.when.slice(1);
     openConfirm({
       title:"Deploy “"+CONFIG_NAME+"”?",
-      bodyHtml:"This makes the schedule live — <b>"+esc(d.when)+"</b> <span style='color:var(--aira-text-tertiary)'>"+esc(d.tz)+"</span> — sending to "+n+" recipient"+(n===1?"":"s")+":"+recipList(),
+      bodyHtml:"Emails will be sent <b>"+esc(whenLc)+" "+esc(d.tz)+"</b> to the selected recipients.",
       confirmLabel:"Deploy",
       onConfirm:function(){ setDeployed(true); showToast("Deployed — the schedule is now live."); }
     });
@@ -692,7 +693,7 @@ svg{display:block}
     var n=recipients.length;
     openConfirm({
       title:deployed?("Run “"+CONFIG_NAME+"” now?"):("Send a test run of “"+CONFIG_NAME+"”?"),
-      bodyHtml:"This emails "+n+" recipient"+(n===1?"":"s")+" immediately:"+recipList(),
+      bodyHtml:"Your email will be sent to "+n+" recipient"+(n===1?"":"s")+" immediately.",
       confirmLabel:deployed?"Run now":"Send test run",
       onConfirm:function(){ showToast((deployed?"Digest":"Test digest")+" sent to "+n+" recipient"+(n===1?"":"s")+"."); }
     });
