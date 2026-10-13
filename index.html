@@ -8,12 +8,14 @@
 
 
 
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600&display=swap">
 <style>
 /* Layout: the artifact panel at its real width, Schedule section in a label | control grid, readback last. */
 :root {
+  --field-w: 220px; /* one width for single-value fields stacked in the Schedule rows */
   --aira-font-sans: "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
   --aira-bg-canvas: #F6F8FA;
   --aira-bg-default: #FFFFFF;
@@ -155,7 +157,7 @@ svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none;
 .cron { width: 100%; max-width: 280px; cursor: text; font-variant-numeric: tabular-nums; }
 .cron input { font-family: ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 0.02em; }
 .tz { min-width: 0; }
-.datefield { min-width: 196px; }
+.datefield { width: var(--field-w); flex: none; }
 .datefield .date-val { font-variant-numeric: tabular-nums; }
 .datefield .default-val { color: var(--aira-text-secondary); }
 .date-wrap { align-items: center; gap: var(--aira-sp-1); }
@@ -391,6 +393,15 @@ svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none;
 .pv-open-link { display: inline-flex; align-items: center; gap: 6px; font: 500 14px/20px var(--aira-font-sans); color: var(--aira-text-link); }
 .pv-open-link svg { width: 14px; height: 14px; }
 .pv-card:hover .pv-open-link { text-decoration: underline; }
+.repeats-alt { margin: 0; font: 400 13px/20px var(--aira-font-sans); }
+.repeats-alt .hint { display: inline; }
+.cron-grid { display: grid; grid-template-columns: repeat(5, minmax(56px, max-content)); column-gap: var(--aira-sp-2); }
+.cron-cell { display: flex; flex-direction: column; gap: var(--aira-sp-1); min-width: 0; }
+.cron-box { width: 100%; padding: 0 var(--aira-sp-2); cursor: text; }
+.cron-box input { text-align: center; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+.cron-name { font: 400 12px/16px var(--aira-font-sans); color: var(--aira-text-tertiary); text-align: center; white-space: nowrap; }
+.repeats-alt:only-child, #repeats[hidden] + .repeats-alt { min-height: 36px; display: flex; align-items: center; flex-wrap: wrap; column-gap: 4px; }
+@media (max-width: 599px) { .cron-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } .cron-name { white-space: normal; } }
 .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--aira-text-primary); color: var(--aira-bg-surface); padding: var(--aira-sp-3) var(--aira-sp-4); border-radius: var(--aira-radius-md); box-shadow: var(--aira-shadow-lg); font: 400 14px/20px var(--aira-font-sans); max-width: calc(100vw - 32px); }
 
 @media (max-width: 599px) {
@@ -403,7 +414,7 @@ svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none;
   .seg button { padding: 0 var(--aira-sp-2); min-height: 40px; }
   .section-head { flex-direction: column; gap: 0; }
   .control, .btn { min-height: 44px; }
-  .datefield { min-width: 0; }
+  .datefield { min-width: 0; max-width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -517,6 +528,7 @@ body { margin: 0; padding: 0 !important; }
         <div class="row-label" id="lbl-repeats">Repeats</div>
         <div class="row-control">
           <div class="seg" role="radiogroup" aria-labelledby="lbl-repeats" id="repeats"></div>
+          <p class="repeats-alt" id="repeats-alt"></p>
         </div>
 
         <div class="row-label" id="lbl-on">On</div>
@@ -645,7 +657,7 @@ body { margin: 0; padding: 0 !important; }
   }
   function parseCron(s) {
     const parts = (s || '').trim().split(/\s+/).filter(Boolean);
-    if (parts.length !== 5) return { error: `Use 5 values separated by spaces: minute, hour, day of month, month, weekday. You have ${parts.length}.` };
+    if (parts.length !== 5) return { error: 'Fill in all five fields. Use * for "every".' };
     const out = [];
     for (let i = 0; i < 5; i++) { const r = parseField(parts[i], FIELDS[i]); if (r.error) return r; out.push(r); }
     const [min, hour, dom, mon, dow] = out;
@@ -736,14 +748,31 @@ body { margin: 0; padding: 0 !important; }
     if (one(c.min) && !c.hour.all && c.dom.all && c.mon.all && c.dow.all && c.hour.set.size > 1) {
       return `Every day at ${listJoin([...c.hour.set].sort((a, b) => a - b).map(h => fmt12(h, v(c.min))))} ${tzAbbr()}`;
     }
+    // Every N hours (0, N, 2N … through the day), on every day / weekdays / listed days
+    const hrs = c.hour.all ? range(0, 23) : [...c.hour.set].sort((a, b) => a - b);
+    const step = hrs.length > 1 ? hrs[1] - hrs[0] : 0;
+    if (one(c.min) && step && hrs[0] === 0 && hrs.every((h, i) => h === i * step) && hrs[hrs.length - 1] + step > 23 && c.dom.all && c.mon.all) {
+      const every = step === 1 ? 'Every hour' : `Every ${step} hours`;
+      const at = v(c.min) ? `, at ${v(c.min)} minutes past` : '';
+      if (c.dow.all) return every + at;
+      const l = dowList();
+      return every + at + (l.join() === 'Mon,Tue,Wed,Thu,Fri' ? ' on weekdays (Mon–Fri)' : ' on ' + listJoin(l));
+    }
     if (one(c.min) && c.hour.all) return `Every hour at ${pad(v(c.min))} minutes past`;
     return 'A custom pattern. Check the next runs below.';
   }
 
   /* ---------- rendering ---------- */
   function renderRepeats() {
-    const opts = [['daily', 'Daily'], ['weekly', 'Weekly'], ['monthly', 'Monthly'], ['custom', 'Custom']];
-    const el = $('#repeats');
+    // Cron is a way out for the few who need it, not a fourth peer of Daily / Weekly / Monthly.
+    const opts = [['daily', 'Daily'], ['weekly', 'Weekly'], ['monthly', 'Monthly']];
+    const el = $('#repeats'), alt = $('#repeats-alt');
+    const isCron = S.repeats === 'custom';
+    el.hidden = isCron;
+    alt.innerHTML = isCron
+      ? `<span class="hint">Using a cron expression.</span> <button type="button" class="link" id="to-simple">Switch to simple schedule</button>`
+      : `<button type="button" class="link" id="to-cron">Use a cron expression instead</button>`;
+    $(isCron ? '#to-simple' : '#to-cron').onclick = () => { setRepeats(isCron ? lastSimple : 'custom'); $(isCron ? '#to-cron' : '#to-simple').focus(); };
     el.innerHTML = opts.map(([v, l]) => `<button type="button" role="radio" aria-checked="${S.repeats === v}" tabindex="${S.repeats === v ? 0 : -1}" data-v="${v}">${l}</button>`).join('');
     el.querySelectorAll('button').forEach((b, i, all) => {
       b.onclick = () => setRepeats(b.dataset.v);
@@ -754,8 +783,10 @@ body { margin: 0; padding: 0 !important; }
       };
     });
   }
+  let lastSimple = 'daily';
   function setRepeats(v) {
     if (v === S.repeats) return;
+    if (S.repeats !== 'custom') lastSimple = S.repeats;
     if (v === 'custom') { S.cron = toCron(); touched.cron = false; }
     S.repeats = v; render();
   }
@@ -779,7 +810,7 @@ body { margin: 0; padding: 0 !important; }
   }
   function renderOn(rule) {
     const el = $('#on-ctl'), lbl = $('#lbl-on');
-    lbl.textContent = S.repeats === 'custom' ? 'Pattern' : 'On';
+    lbl.textContent = S.repeats === 'custom' ? 'Cron' : 'On';
     const hideOn = S.repeats === 'daily';
     lbl.hidden = hideOn; el.hidden = hideOn;
     if (hideOn) { el.innerHTML = ''; return; }
@@ -805,18 +836,30 @@ body { margin: 0; padding: 0 !important; }
         render(); $(`.dom-day[data-d="${btn.dataset.d}"]`).focus();
       });
     } else {
+      // Five small fields, each labelled underneath, so every value sits over its own name.
       const showErr = rule.field === 'cron' && touched.cron;
-      el.innerHTML = `<div class="inline">
-          <label class="control cron ${showErr ? 'invalid' : ''}"><span class="sr">Cron expression</span><input id="cron" value="${S.cron}" spellcheck="false" autocomplete="off" aria-describedby="cron-key cron-err" ${showErr ? 'aria-invalid="true"' : ''}></label>
-          <div class="dd-wrap" id="tz-dd-c"></div>
+      const parts = (S.cron || '').split(/\s+/);
+      const names = ['Minute', 'Hour', 'Day of month', 'Month', 'Weekday'];
+      el.innerHTML = `<div class="cron-grid" role="group" aria-labelledby="lbl-on">
+          ${names.map((n, i) => `<label class="cron-cell"><span class="control cron-box ${showErr ? 'invalid' : ''}"><input id="cron-${i}" value="${esc(parts[i] || '')}" spellcheck="false" autocomplete="off" aria-label="${n}" ${showErr ? 'aria-invalid="true" aria-describedby="cron-err"' : ''}></span><span class="cron-name">${n.toLowerCase()}</span></label>`).join('')}
         </div>
-        <div class="cron-key" id="cron-key"><span>minute</span><span>hour</span><span>day of month</span><span>month</span><span>weekday</span></div>
         ${showErr ? `<p class="err" id="cron-err">${icon('alert')}${rule.error}</p>` : ''}`;
-      const inp = $('#cron');
-      inp.oninput = () => { S.cron = inp.value; renderReadback(buildRule()); syncHeader(); };
-      inp.onblur = () => { touched.cron = true; render(); };
-      inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); };
-      tzDropdown($('#tz-dd-c'), 'tz-c');
+      const ins = [...el.querySelectorAll('.cron-cell input')];
+      const sync = () => { S.cron = ins.map(x => x.value.trim()).join(' '); renderReadback(buildRule()); syncHeader(); };
+      ins.forEach((inp, i) => {
+        inp.oninput = () => {
+          // Pasting or typing a whole expression spreads it across the fields.
+          const bits = inp.value.trim().split(/\s+/);
+          if (bits.length > 1) { bits.slice(0, 5 - i).forEach((b, k) => { ins[i + k].value = b; }); ins[Math.min(4, i + bits.length - 1)].focus(); }
+          else if (/\s$/.test(inp.value) && i < 4) { inp.value = inp.value.trim(); ins[i + 1].focus(); }
+          sync();
+        };
+        inp.onkeydown = e => {
+          if (e.key === 'Enter') inp.blur();
+          else if (e.key === 'Backspace' && !inp.value && i > 0) { e.preventDefault(); ins[i - 1].focus(); }
+        };
+        inp.onblur = () => setTimeout(() => { if (!el.contains(document.activeElement)) { touched.cron = true; render(); } }, 0);
+      });
     }
   }
 
@@ -824,9 +867,14 @@ body { margin: 0; padding: 0 !important; }
   const TIMES = range(0, 95).map(i => `${pad(Math.floor(i / 4))}:${pad((i % 4) * 15)}`);
   function renderAt(rule) {
     const lbl = $('#lbl-at'), el = $('#at-ctl');
-    const hide = S.repeats === 'custom';
-    lbl.hidden = hide; el.hidden = hide;
-    if (hide) return;
+    lbl.hidden = false; el.hidden = false;
+    if (S.repeats === 'custom') {
+      lbl.textContent = 'Time zone';
+      el.innerHTML = `<div class="inline"><div class="dd-wrap" id="tz-dd"></div></div>`;
+      tzDropdown($('#tz-dd'), 'tz', 'var(--field-w)');
+      return;
+    }
+    lbl.textContent = 'At';
     const showErr = rule.field === 'time' && touched.time;
     el.innerHTML = `<div class="inline">
         <div class="dd-wrap"><div class="control time ${showErr ? 'invalid' : ''}" id="time-box">
@@ -888,9 +936,9 @@ body { margin: 0; padding: 0 !important; }
     tzDropdown($('#tz-dd'), 'tz');
   }
 
-  function tzDropdown(host, id) {
+  function tzDropdown(host, id, width) {
     const t = TZS.find(x => x.id === S.tz);
-    dropdown(host, { id, labelledby: null, aria: 'Time zone', text: `<span>${t.abbr}</span><span class="muted">${t.id}</span>`, opts: TZS.map(x => x.sep ? x : { v: x.id, label: x.label, sub: x.sub }), value: S.tz,
+    dropdown(host, { id, width, labelledby: null, aria: 'Time zone', text: `<span>${t.abbr}</span><span class="muted">${t.id}</span>`, opts: TZS.map(x => x.sep ? x : { v: x.id, label: x.label, sub: x.sub }), value: S.tz,
       onPick: v => { S.tz = v; render(); $('#' + id).focus(); } });
   }
 
