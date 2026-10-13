@@ -6,6 +6,7 @@
 <title>Scheduler panel</title>
 <meta name="description" content="aiRA scheduler panel: schedule, recipients and preview as summary lines that open into editors">
 
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600&display=swap">
@@ -298,6 +299,7 @@ svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none;
 .sum-people li.flag { color: var(--aira-text-danger); }
 .sum-people li.flag svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px; }
 .sum-line { flex-basis: 100%; }
+.sum-people.one-col { grid-template-columns: minmax(0, 1fr); }
 .sum-less { flex-basis: 100%; margin-top: var(--aira-sp-2); }
 @media (max-width: 599px) { .sum-people { grid-template-columns: minmax(0, 1fr); } }
 .blk-sum .sum-list .link { font-size: inherit; line-height: inherit; }
@@ -368,7 +370,7 @@ svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none;
 .pv-mail.mobile .mail-body { padding: var(--aira-sp-5) var(--aira-sp-4); }
 .pv-mail.mobile .m-kpi strong { font-size: 20px; line-height: 28px; }
 /* Preview: same pattern as creatives elsewhere — subject row, clipped body card, footer tools */
-.pv-rows { display: grid; grid-template-columns: 96px minmax(0, 1fr); column-gap: var(--aira-sp-4); row-gap: var(--aira-sp-3); align-items: start; }
+.pv-rows { display: grid; grid-template-columns: 96px minmax(0, 1fr); column-gap: var(--aira-sp-4); row-gap: var(--aira-sp-5); align-items: start; }
 .pv-label { font: 400 14px/20px var(--aira-font-sans); color: var(--aira-text-secondary); }
 .pv-subject { font: 500 14px/20px var(--aira-font-sans); color: var(--aira-text-primary); }
 .pv-card { border: 1px solid var(--aira-border-default); border-radius: var(--aira-radius-lg); overflow: hidden; background: var(--aira-bg-surface); }
@@ -1230,9 +1232,12 @@ body { margin: 0; padding: 0 !important; }
       const t = (e.clipboardData || window.clipboardData).getData('text');
       if (/[,;\s]/.test(t.trim())) { e.preventDefault(); recipUi.draft = ''; addEmails(t); recipUi.focus = true; render(); }
     };
-    inp.onfocus = () => { if (!inp.value.trim()) { act = -1; showSug(); } };
+    // The list opens only when the person clicks or tabs into the field, not when focus comes back after removing or adding someone.
+    let quiet = false;
+    inp.onfocus = () => { if (quiet) { quiet = false; return; } if (!inp.value.trim()) { act = -1; showSug(); } };
+    inp.onclick = () => { if (!sug && !inp.value.trim()) { act = -1; showSug(); } };
     inp.onblur = () => setTimeout(() => { closeSug(); if (inp.isConnected && inp.value.trim() && validEmail(inp.value.trim())) commit(); }, 120);
-    if (recipUi.focus) { recipUi.focus = false; $('#tok-scroll').scrollTop = 1e6; inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+    if (recipUi.focus) { recipUi.focus = false; $('#tok-scroll').scrollTop = 1e6; quiet = true; inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
   }
 
 
@@ -1262,8 +1267,11 @@ body { margin: 0; padding: 0 !important; }
       const items = ordered.map(e => `<li class="${flag(e) ? 'flag' : ''}" title="${nameOf(e) || e}">${flag(e) ? `<svg class="i" role="img" aria-label="Email not found"><use href="#i-alert"/></svg>` : ''}${name(e)}</li>`).join('');
       return count + err + `<ul class="sum-people">${items}</ul><span class="sum-less"><button type="button" class="link" id="recip-all">Show less</button></span>`;
     }
-    const shown = l.slice(0, 1).map(name), rest = l.length - shown.length;
-    return count + err + `<span class="sum-sub sum-line">${shown.join(', ')}${rest > 0 ? ` and <button type="button" class="link" id="recip-all">${rest} more</button>` : ''}</span>`;
+    // Closed: the first three, one per line (full emails are too long to run together), then "+N more".
+    const SHOW = 3;
+    const shown = [...l.filter(e => !flag(e)), ...bad].slice(0, SHOW), rest = l.length - shown.length;
+    return count + err + `<ul class="sum-people one-col">${shown.map(e => `<li class="${flag(e) ? 'flag' : ''}" title="${nameOf(e) || e}">${flag(e) ? `<svg class="i" role="img" aria-label="Email not found"><use href="#i-alert"/></svg>` : ''}${name(e)}</li>`).join('')}</ul>` +
+      (rest > 0 ? `<span class="sum-less"><button type="button" class="link" id="recip-all">+${rest} more</button></span>` : '');
   }
   const esc = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   let subjEdit = false, subjDraft = '', subjErr = false;
