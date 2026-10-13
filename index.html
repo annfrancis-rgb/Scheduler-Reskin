@@ -9,6 +9,7 @@
 
 
 
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600&display=swap">
@@ -95,7 +96,7 @@ svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none;
 .btn.primary { background: var(--aira-btn-primary-bg); color: var(--aira-btn-primary-text); }
 .btn.primary:hover:not(:disabled) { background: var(--aira-btn-primary-bg-hover); }
 .btn.secondary { background: var(--aira-btn-secondary-bg); color: var(--aira-btn-secondary-text); border-color: var(--aira-btn-secondary-border); }
-.btn.secondary:hover { background: var(--aira-btn-secondary-bg-hover); }
+.btn.secondary:hover:not(:disabled) { background: var(--aira-btn-secondary-bg-hover); }
 .btn.tertiary { background: transparent; color: var(--aira-btn-tertiary-text); height: 32px; padding: 0 var(--aira-sp-3); }
 .btn.tertiary:hover { background: var(--aira-btn-tertiary-bg-hover); }
 .btn:disabled { background: var(--aira-bg-disabled); color: var(--aira-text-disabled); border-color: transparent; cursor: not-allowed; }
@@ -484,8 +485,8 @@ body { margin: 0; padding: 0 !important; }
   <div class="chat-col" aria-label="Chat">
     <div class="chat-scroll">
       <div class="chat-note">Chat · shown for context</div>
-      <div class="chat-msg user">I want to edit the schedule “Daily Performance Digest (Test)”. Load it and show it in the panel.</div>
-      <div class="chat-msg ai">“Daily Performance Digest (Test)” is open in the panel as v4. You can change the schedule, the recipients or the subject there. To change what the email says, tell me here.</div>
+      <div class="chat-msg user">Send yesterday’s sales digest to the store ops team every day at 9:35 PM.</div>
+      <div class="chat-msg ai">I’ve set it up as “Daily Performance Digest (Test)” in the panel. Check the schedule, the recipients and the subject, then deploy to make it live. Nothing goes out until you do.</div>
     </div>
     <div class="composer-wrap">
       <div class="composer">
@@ -507,11 +508,11 @@ body { margin: 0; padding: 0 !important; }
 <main class="panel" aria-label="Scheduler artifact panel">
   <header class="head">
     <h1>Daily Performance Digest (Test)</h1>
-    <span class="ver" id="ver">v4</span>
-    <span class="pill-draft" id="draft" hidden>Draft</span>
+    <span class="ver" id="ver">v1</span>
+    <span class="pill-draft" id="draft">Draft</span>
     <span class="grow"></span>
     <div class="head-actions">
-      <button class="btn primary" id="deploy" disabled>Deployed</button>
+      <button class="btn primary" id="deploy">Deploy</button>
       <button class="btn secondary" id="runnow"><svg class="i"><use href="#i-play"/></svg>Run now</button>
       <button class="icon-btn" aria-label="Close panel"><svg class="i"><use href="#i-x"/></svg></button>
     </div>
@@ -591,10 +592,11 @@ body { margin: 0; padding: 0 !important; }
   ];
 
   const initial = { repeats: 'daily', dailyMode: 'every', weekDays: [0], monthDays: [1], time: '21:35', tz: 'Asia/Kolkata', cron: '35 21 * * *', startMode: 'deploy', start: null, endMode: 'never', end: null, subject: "Yesterday's sales: revenue, transactions and top stores",
-    recipients: ['meera.iyer@capillarytech.com', 'rahul.menon@capillarytech.com', 'kavya.s@capillarytech.com', 'arjun.das@capillarytech.com', 'neha.kapoor@capillarytech.com', 'old.ops@capillarytech.com', 'farah.khan@capillarytech.com', 'vikram.rao@capillarytech.com', 'reports@trendly.in', 'sana.p@capillarytech.com', 'dev.malhotra@capillarytech.com'] };
+    recipients: ['meera.iyer@capillarytech.com', 'rahul.menon@capillarytech.com', 'kavya.s@capillarytech.com', 'arjun.das@capillarytech.com', 'neha.kapoor@capillarytech.com', 'farah.khan@capillarytech.com', 'vikram.rao@capillarytech.com', 'reports@trendly.in', 'sana.p@capillarytech.com', 'dev.malhotra@capillarytech.com'] };
   let deployed = JSON.parse(JSON.stringify(initial));
   let S = JSON.parse(JSON.stringify(initial));
-  let version = 4;
+  // A new schedule starts undeployed: nothing is live and no runs have happened yet.
+  let version = 0, everDeployed = false;
   let touched = { time: false, cron: false };
 
   /* ---------- date helpers: all dates are wall-clock times stored as UTC ---------- */
@@ -1135,7 +1137,7 @@ body { margin: 0; padding: 0 !important; }
   });
 
   /* ---------- header, dirty state ---------- */
-  const isDirty = () => JSON.stringify(S) !== JSON.stringify(deployed);
+  const isDirty = () => !everDeployed || JSON.stringify(S) !== JSON.stringify(deployed);
   function syncHeader() {
     const dirty = isDirty(), rule = buildRule();
     $('#ver').textContent = 'v' + (dirty ? version + 1 : version);
@@ -1143,11 +1145,14 @@ body { margin: 0; padding: 0 !important; }
     const dep = $('#deploy');
     dep.textContent = dirty ? 'Deploy' : 'Deployed';
     dep.disabled = !dirty || !!rule.error || !!readbackProblem || S.recipients.some(e => !validEmail(e));
+    const run = $('#runnow');
+    run.disabled = !everDeployed;
+    run.title = everDeployed ? '' : 'Deploy the schedule first. Run now sends the live version.';
     if (typeof syncDone === 'function') syncDone();
   }
   $('#deploy').onclick = () => {
-    deployed = JSON.parse(JSON.stringify(S)); version += 1; render();
-    toast(`v${version} deployed. The new schedule is live.`);
+    deployed = JSON.parse(JSON.stringify(S)); version += 1; everDeployed = true; render();
+    toast(version === 1 ? 'Deployed. The schedule is live.' : `v${version} deployed. The new schedule is live.`);
   };
   $('#runnow').onclick = () => toast(`Running v${version} now. It goes to ${deployed.recipients.length} people.`);
   let tt;
@@ -1157,7 +1162,7 @@ body { margin: 0; padding: 0 !important; }
   /* ---------- recipients ---------- */
   const ORG_DOMAIN = 'capillarytech.com';
   const ME = 'meera.iyer@capillarytech.com';
-  const BOUNCED = { 'old.ops@capillarytech.com': 3 };
+  const BOUNCED = {}; // filled from run history once the schedule has run
   const DIRECTORY = [
     ['Meera Iyer', 'meera.iyer@capillarytech.com'], ['Rahul Menon', 'rahul.menon@capillarytech.com'],
     ['Arjun Das', 'arjun.das@capillarytech.com'], ['Neha Kapoor', 'neha.kapoor@capillarytech.com'],
