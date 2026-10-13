@@ -10,6 +10,7 @@
 
 
 
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600&display=swap">
@@ -56,6 +57,9 @@
   --aira-btn-tertiary-text: #364152;
   --aira-approval-draft-bg: #EEF1F4;
   --aira-approval-draft-text: #364152;
+  --aira-approval-live-bg: #EEF0FF;
+  --aira-approval-live-text: #252AA0;
+  --pill-label: #1A2434; /* status pill labels, per the user's aiRA pill rule */
   --aira-shadow-lg: 0 12px 24px -6px rgba(17, 24, 39, 0.14), 0 4px 8px -4px rgba(17, 24, 39, 0.08);
   --aira-shadow-sm: 0 1px 3px rgba(17, 24, 39, 0.08), 0 1px 2px rgba(17, 24, 39, 0.04);
   --aira-shadow-focus: 0 0 0 3px rgba(52, 56, 201, 0.12);
@@ -85,12 +89,17 @@ svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none;
 }
 
 /* Header */
-.head { display: flex; align-items: center; gap: var(--aira-sp-3); padding: var(--aira-sp-4) var(--aira-sp-5); border-bottom: 1px solid var(--aira-border-default); flex-wrap: wrap; }
-.head h1 { margin: 0; font: 500 16px/24px var(--aira-font-sans); min-width: 0; }
+.head { display: flex; align-items: center; gap: var(--aira-sp-3); padding: var(--aira-sp-4) var(--aira-sp-5); border-bottom: 1px solid var(--aira-border-default); flex-wrap: nowrap; }
+/* One line: the title gives way (ellipsis) before the tags or the actions wrap. */
+.head h1 { margin: 0; font: 500 16px/24px var(--aira-font-sans); min-width: 0; flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.head .ver, .head .pill, .head-actions { flex: none; }
 .ver { font: 500 12px/16px var(--aira-font-sans); color: var(--aira-text-secondary); border: 1px solid var(--aira-border-default); border-radius: var(--aira-radius-pill); padding: 2px var(--aira-sp-2); }
-.pill-draft { font: 500 12px/16px var(--aira-font-sans); background: var(--aira-approval-draft-bg); color: var(--aira-approval-draft-text); border-radius: var(--aira-radius-pill); padding: 2px var(--aira-sp-2); }
+.pill { display: inline-flex; align-items: center; gap: var(--aira-sp-1); padding: 2px 10px; font: 500 12px/16px var(--aira-font-sans); border-radius: var(--aira-radius-pill); } /* matches the published AiraPill */
+.pill-draft { background: var(--aira-approval-draft-bg); color: var(--pill-label); }
+.pill-live { background: var(--aira-approval-live-bg); color: var(--pill-label); }
 .head .grow { flex: 1; }
 .head-actions { display: flex; align-items: center; gap: var(--aira-sp-2); margin-left: auto; }
+.head-actions .btn { height: 32px; padding: 0 var(--aira-sp-3); }
 
 .btn { height: 36px; padding: 0 var(--aira-sp-4); border-radius: var(--aira-radius-md); border: 1px solid transparent; font: 500 14px/20px var(--aira-font-sans); cursor: pointer; display: inline-flex; align-items: center; gap: var(--aira-sp-2); transition: background var(--aira-motion-fast); white-space: nowrap; }
 .btn.primary { background: var(--aira-btn-primary-bg); color: var(--aira-btn-primary-text); }
@@ -302,6 +311,7 @@ svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none;
 .mail-table td { padding: 6px 0; border-bottom: 1px solid var(--aira-border-subtle); }
 .mail-table th + th, .mail-table td + td { padding-left: var(--aira-sp-3); }
 @media (max-width: 599px) {
+  .head { flex-wrap: wrap; } /* on a phone the actions take their own line */
   .blk-head { grid-template-columns: minmax(0, 1fr) auto; row-gap: 2px; padding-inline: var(--aira-sp-4); }
   .blk-head h2 { grid-column: 1; }
   .blk-sum { grid-column: 1; grid-row: 2; }
@@ -509,7 +519,7 @@ body { margin: 0; padding: 0 !important; }
   <header class="head">
     <h1>Daily Performance Digest (Test)</h1>
     <span class="ver" id="ver">v1</span>
-    <span class="pill-draft" id="draft">Draft</span>
+    <span class="pill pill-draft" id="status">Draft</span>
     <span class="grow"></span>
     <div class="head-actions">
       <button class="btn primary" id="deploy">Deploy</button>
@@ -913,7 +923,8 @@ body { margin: 0; padding: 0 !important; }
       act = nearest(); mark(true);
     };
     const close = () => { if (menu) { menu.remove(); menu = null; inp.setAttribute('aria-expanded', 'false'); inp.removeAttribute('aria-activedescendant'); } };
-    const pick = t => { S.time = t; touched.time = true; close(); skipTimeOpen = true; render(); $('#time').focus(); };
+    // Write the picked time into the field first: re-rendering blurs the old field, and its blur handler reads the field's value.
+    const pick = t => { inp.value = disp(t); S.time = t; touched.time = true; close(); skipTimeOpen = true; render(); $('#time').focus(); };
     inp.onfocus = () => { if (skipTimeOpen) { skipTimeOpen = false; return; } inp.select(); open(); };
     inp.onclick = open;
     box.onmousedown = e => { if (e.target !== inp) { e.preventDefault(); inp.focus(); open(); } };
@@ -931,6 +942,7 @@ body { margin: 0; padding: 0 !important; }
     };
     inp.onblur = () => {
       close();
+      if (!inp.isConnected) return; // the field was replaced by a re-render; nothing to save
       const t = parseTime(inp.value);
       if (t) S.time = `${pad(t.h)}:${pad(t.mi)}`;
       touched.time = true; render();
@@ -1141,7 +1153,10 @@ body { margin: 0; padding: 0 !important; }
   function syncHeader() {
     const dirty = isDirty(), rule = buildRule();
     $('#ver').textContent = 'v' + (dirty ? version + 1 : version);
-    $('#draft').hidden = !dirty;
+    // Lifecycle pill: Draft while there are undeployed changes, Live once what you see is what's running.
+    const st = $('#status');
+    st.textContent = dirty ? 'Draft' : 'Live';
+    st.className = 'pill ' + (dirty ? 'pill-draft' : 'pill-live');
     const dep = $('#deploy');
     dep.textContent = dirty ? 'Deploy' : 'Deployed';
     dep.disabled = !dirty || !!rule.error || !!readbackProblem || S.recipients.some(e => !validEmail(e));
