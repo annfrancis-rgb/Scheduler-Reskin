@@ -7,6 +7,7 @@
 <meta name="description" content="aiRA scheduler panel: schedule, recipients and preview as summary lines that open into editors">
 
 
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600&display=swap">
@@ -413,6 +414,17 @@ svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none;
 .dom-day[aria-pressed="true"] { background: var(--aira-bg-selected); border-color: var(--aira-border-brand); color: var(--aira-text-link); font-weight: 500; }
 .dom-last { grid-column: span 4; }
 @media (max-width: 599px) { .dom-grid { grid-template-columns: repeat(7, minmax(36px, 44px)); } .dom-day { height: 44px; } }
+/* Scheduler preview card: one box, the whole card opens the full email */
+.pv-card { position: relative; cursor: pointer; transition: border-color var(--aira-motion-fast), box-shadow var(--aira-motion-fast); }
+.pv-card:hover { border-color: var(--aira-border-strong); box-shadow: var(--aira-shadow-sm); }
+.pv-card:focus-visible { outline: 2px solid var(--aira-border-focus); outline-offset: 2px; }
+.pv-card .pv-clip { padding: 0; background: var(--aira-bg-surface); max-height: 300px; }
+.pv-card .pv-clip .pv-mail { border: 0; border-radius: 0; max-width: none; }
+.pv-card .pv-clip::after { height: 120px; background: linear-gradient(to bottom, transparent 0, var(--aira-bg-surface) 60%); }
+.pv-open { position: absolute; inset: auto 0 0 0; display: flex; justify-content: center; padding: var(--aira-sp-3); }
+.pv-open-link { display: inline-flex; align-items: center; gap: 6px; font: 500 14px/20px var(--aira-font-sans); color: var(--aira-text-link); }
+.pv-open-link svg { width: 14px; height: 14px; }
+.pv-card:hover .pv-open-link { text-decoration: underline; }
 .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--aira-text-primary); color: var(--aira-bg-surface); padding: var(--aira-sp-3) var(--aira-sp-4); border-radius: var(--aira-radius-md); box-shadow: var(--aira-shadow-lg); font: 400 14px/20px var(--aira-font-sans); max-width: calc(100vw - 32px); }
 
 @media (max-width: 599px) {
@@ -483,6 +495,7 @@ body { margin: 0; padding: 0 !important; }
   <symbol id="i-code" viewBox="0 0 24 24"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></symbol>
   <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/></symbol>
   <symbol id="i-monitor" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
   <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
@@ -1374,20 +1387,14 @@ body { margin: 0; padding: 0 !important; }
           </div>`
         : `<div class="pv-subject"><span>${subjectLine()}</span><button type="button" class="icon-btn" id="subj-edit" aria-label="Edit subject">${icon('pencil')}</button></div>`}
         <div class="pv-label">Message body</div>
-        <div class="pv-card">
+        <div class="pv-card" id="pv-card" role="button" tabindex="0" aria-label="Open the full email">
           <div class="pv-clip" aria-hidden="true"><article class="pv-mail">${mailBody()}</article></div>
-          <div class="pv-foot">
-            <span class="pv-meta">Desktop · 600 px <span aria-hidden="true">•</span> HTML</span>
-            <span class="pv-tools">
-              <button type="button" class="icon-btn" data-open="mobile" aria-label="Preview on mobile">${icon('phone')}</button>
-              <button type="button" class="icon-btn" data-open="html" aria-label="View HTML">${icon('code')}</button>
-              <button type="button" class="btn tertiary" data-open="client">${icon('eye')}Client</button>
-              <button type="button" class="btn secondary" data-open="desktop">${icon('eye')}Preview</button>
-            </span>
-          </div>
+          <div class="pv-open"><span class="pv-open-link">Open full email ${icon('expand')}</span></div>
         </div>
       </div>`;
-    body.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openPreview(b.dataset.open, b));
+    const card = $('#pv-card');
+    card.onclick = () => openPreview('desktop', card);
+    card.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPreview('desktop', card); } };
     const se = $('#subj-edit');
     if (se) se.onclick = () => { subjEdit = true; subjDraft = S.subject; subjErr = false; renderPreview(); const i = $('#subj'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); };
     const si = $('#subj');
