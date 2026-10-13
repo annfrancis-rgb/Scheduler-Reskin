@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Scheduler panel</title>
 <meta name="description" content="aiRA scheduler panel: schedule, recipients and preview as summary lines that open into editors">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600&display=swap">
@@ -218,10 +219,10 @@ svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none;
 .cal-day:disabled { color: var(--aira-text-disabled); cursor: not-allowed; }
 .cal-day.out { visibility: hidden; }
 .cal-day.today { box-shadow: inset 0 0 0 1px var(--aira-border-strong); }
-.cal-day.range { background: var(--aira-bg-selected); border-radius: 0; }
-.cal-day.sel { background: var(--aira-btn-primary-bg); color: var(--aira-btn-primary-text); font-weight: 500; }
+.cal-day.range { background: var(--aira-bg-muted); border-radius: 0; }
+.cal-day.sel { background: var(--aira-bg-selected); box-shadow: inset 0 0 0 1px var(--aira-border-brand); color: var(--aira-text-link); font-weight: 500; }
 .cal-day .dot { position: absolute; bottom: 4px; left: 50%; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--aira-text-link); }
-.cal-day.sel .dot { background: var(--aira-btn-primary-text); }
+.cal-day.sel .dot { background: var(--aira-text-link); }
 .cal-day:disabled .dot { background: var(--aira-text-disabled); }
 .cal-foot { display: flex; align-items: center; justify-content: flex-start; gap: var(--aira-sp-3); border-top: 1px solid var(--aira-border-subtle); margin-top: var(--aira-sp-3); padding-top: var(--aira-sp-3); }
 .legend { white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; font: 400 12px/16px var(--aira-font-sans); color: var(--aira-text-tertiary); }
@@ -402,6 +403,14 @@ svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none;
 .pv-subj-edit { display: flex; flex-direction: column; gap: var(--aira-sp-2); margin-top: -8px; }
 .subj-line { flex-wrap: nowrap; }
 .subj-input { flex: 1; min-width: 0; cursor: text; }
+.btn.sm { height: 32px; padding: 0 var(--aira-sp-3); }
+.blk-act { gap: var(--aira-sp-2); }
+.dom-grid { display: grid; grid-template-columns: repeat(7, 40px); gap: var(--aira-sp-1); }
+.dom-day { height: 36px; border: 1px solid transparent; border-radius: var(--aira-radius-md); background: transparent; font: 400 14px/20px var(--aira-font-sans); font-variant-numeric: tabular-nums; color: var(--aira-text-primary); cursor: pointer; }
+.dom-day:hover:not([aria-pressed="true"]) { background: var(--aira-bg-hover); }
+.dom-day[aria-pressed="true"] { background: var(--aira-bg-selected); border-color: var(--aira-border-brand); color: var(--aira-text-link); font-weight: 500; }
+.dom-last { grid-column: span 4; }
+@media (max-width: 599px) { .dom-grid { grid-template-columns: repeat(7, minmax(36px, 44px)); } .dom-day { height: 44px; } }
 .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--aira-text-primary); color: var(--aira-bg-surface); padding: var(--aira-sp-3) var(--aira-sp-4); border-radius: var(--aira-radius-md); box-shadow: var(--aira-shadow-lg); font: 400 14px/20px var(--aira-font-sans); max-width: calc(100vw - 32px); }
 
 @media (max-width: 599px) {
@@ -452,8 +461,7 @@ body { margin: 0; padding: 0 !important; }
   .chat-col { flex: none; max-height: 38vh; }
   .pane { flex: none; overflow: visible; border-inline-start: 0; border-top: 1px solid var(--aira-border-default); }
 }
-</style>
-</head>
+</style></head>
 <body>
 
 
@@ -589,7 +597,7 @@ body { margin: 0; padding: 0 !important; }
     { id: 'Australia/Sydney', abbr: 'AET', label: 'Sydney · AET', sub: 'Australia/Sydney' },
   ];
 
-  const initial = { repeats: 'daily', dailyMode: 'every', weekDays: [0], monthDay: 1, time: '21:35', tz: 'Asia/Kolkata', cron: '35 21 * * *', startMode: 'deploy', start: null, endMode: 'never', end: null, subject: "Yesterday's sales: revenue, transactions and top stores",
+  const initial = { repeats: 'daily', dailyMode: 'every', weekDays: [0], monthDays: [1], time: '21:35', tz: 'Asia/Kolkata', cron: '35 21 * * *', startMode: 'deploy', start: null, endMode: 'never', end: null, subject: "Yesterday's sales: revenue, transactions and top stores",
     recipients: ['meera.iyer@capillarytech.com', 'rahul.menon@capillarytech.com', 'kavya.s@capillarytech.com', 'arjun.das@capillarytech.com', 'neha.kapoor@capillarytech.com', 'old.ops@capillarytech.com', 'farah.khan@capillarytech.com', 'vikram.rao@capillarytech.com', 'reports@trendly.in', 'sana.p@capillarytech.com', 'dev.malhotra@capillarytech.com'] };
   let deployed = JSON.parse(JSON.stringify(initial));
   let S = JSON.parse(JSON.stringify(initial));
@@ -639,9 +647,9 @@ body { margin: 0; padding: 0 !important; }
   ];
   function parseField(str, f) {
     if (str === '*') return { all: true, set: null };
-    if (f.allowL && str.toUpperCase() === 'L') return { last: true, set: new Set() };
-    const set = new Set();
+    const set = new Set(); let last = false;
     for (const part of str.split(',')) {
+      if (f.allowL && part.toUpperCase() === 'L') { last = true; continue; }
       const m = part.toUpperCase().match(/^(\*|[A-Z0-9]+)(?:-([A-Z0-9]+))?(?:\/(\d+))?$/);
       if (!m) return { error: `${f.name} "${part}" isn't a value aiRA can read.` };
       const val = v => { if (f.names && f.names[v] !== undefined) return f.names[v]; return /^\d+$/.test(v) ? +v : NaN; };
@@ -652,7 +660,7 @@ body { margin: 0; padding: 0 !important; }
       if (!step) return { error: `${f.name} step can't be 0.` };
       for (let v = a; v <= b; v += step) set.add(f.names && v === 7 ? 0 : v);
     }
-    return { all: false, set };
+    return { all: false, set, last };
   }
   function parseCron(s) {
     const parts = (s || '').trim().split(/\s+/).filter(Boolean);
@@ -670,7 +678,7 @@ body { margin: 0; padding: 0 !important; }
       if (c.error) return { error: c.error, field: 'cron' };
       const mins = c.min.all ? range(0, 59) : [...c.min.set].sort((a, b) => a - b);
       const hrs = c.hour.all ? range(0, 23) : [...c.hour.set].sort((a, b) => a - b);
-      const domMatch = d => c.dom.all ? true : c.dom.last ? d.getUTCDate() === lastDom(d.getUTCFullYear(), d.getUTCMonth()) : c.dom.set.has(d.getUTCDate());
+      const domMatch = d => c.dom.all || c.dom.set.has(d.getUTCDate()) || (c.dom.last && d.getUTCDate() === lastDom(d.getUTCFullYear(), d.getUTCMonth()));
       const dowMatch = d => c.dow.all ? true : c.dow.set.has(d.getUTCDay());
       const day = d => {
         if (!c.mon.all && !c.mon.set.has(d.getUTCMonth() + 1)) return false;
@@ -688,10 +696,11 @@ body { margin: 0; padding: 0 !important; }
       if (!S.weekDays.length) return { error: 'Pick at least one day.', field: 'days' };
       return { times, day: d => S.weekDays.includes(monIdx(d)) };
     }
+    if (!S.monthDays.length) return { error: 'Pick at least one day.', field: 'days' };
     return { times, day: d => {
       const last = lastDom(d.getUTCFullYear(), d.getUTCMonth());
-      const target = S.monthDay === 'last' ? last : Math.min(S.monthDay, last);
-      return d.getUTCDate() === target;
+      // A day the month doesn't have (31st in a 30-day month) runs on the last day instead.
+      return S.monthDays.some(m => (m === 'last' ? last : Math.min(m, last)) === d.getUTCDate());
     } };
   }
   const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
@@ -729,8 +738,8 @@ body { margin: 0; padding: 0 !important; }
       return 'Every ' + listJoin(d.map(i => DOW[i])) + at;
     }
     if (S.repeats === 'monthly') {
-      if (S.monthDay === 'last') return 'Every month on the last day' + at;
-      return `Every month on the ${ord(S.monthDay)}` + at;
+      const nums = S.monthDays.filter(m => m !== 'last').sort((a, b) => a - b).map(m => m === 31 ? 'last day' : ord(m));
+      return 'Every month on the ' + listJoin([...nums, ...(S.monthDays.includes('last') ? ['last day'] : [])]) + at;
     }
     // custom
     const c = rule.cron, one = x => !x.all && x.set && x.set.size === 1;
@@ -740,7 +749,7 @@ body { margin: 0; padding: 0 !important; }
       const t = ` at ${fmt12(v(c.hour), v(c.min))} ${tzAbbr()}`;
       if (c.mon.all && c.dom.all && c.dow.all) return 'Every day' + t;
       if (c.mon.all && c.dom.all) { const l = dowList(); return (l.join() === 'Mon,Tue,Wed,Thu,Fri' ? 'Every weekday (Mon–Fri)' : 'Every ' + listJoin(l)) + t; }
-      if (c.mon.all && c.dow.all) return c.dom.last ? 'Every month on the last day' + t : 'Every month on the ' + listJoin([...c.dom.set].sort((a, b) => a - b).map(ord)) + t;
+      if (c.mon.all && c.dow.all) return 'Every month on the ' + listJoin([...[...c.dom.set].sort((a, b) => a - b).map(ord), ...(c.dom.last ? ['last day'] : [])]) + t;
       if (c.dow.all && !c.mon.all && !c.dom.all && !c.dom.last) return `Every year on ${listJoin([...c.dom.set].map(ord))} ${listJoin([...c.mon.set].map(m => MON_FULL[m - 1]))}` + t;
     }
     if (one(c.min) && !c.hour.all && c.dom.all && c.mon.all && c.dow.all && c.hour.set.size > 1) {
@@ -774,9 +783,19 @@ body { margin: 0; padding: 0 !important; }
     const p = `${t.mi} ${t.h}`;
     if (S.repeats === 'daily') return S.dailyMode === 'every' ? `${p} * * *` : `${p} * * 1-5`;
     if (S.repeats === 'weekly') return `${p} * * ${[...S.weekDays].sort().map(i => (i + 1) % 7).join(',') || '1'}`;
-    return `${p} ${S.monthDay === 'last' ? 'L' : S.monthDay} * *`;
+    return `${p} ${[...S.monthDays].sort((a, b) => (a === 'last') - (b === 'last') || a - b).map(m => m === 'last' ? 'L' : m).join(',') || '1'} * *`;
   }
 
+  // Names the next month that lacks the picked day, e.g. "No 31st in November, so it runs on Mon 30 Nov instead."
+  function shortMonthNote(day) {
+    const now = nowWall(S.tz);
+    for (let i = 0; i < 14; i++) {
+      const y = now.getUTCFullYear(), m = now.getUTCMonth() + i;
+      const last = lastDom(y, m);
+      if (last < day) { const d = W(y, m, last); return `No ${ord(day)} in ${MON_FULL[d.getUTCMonth()]}, so it runs on ${fmtShort(d)} instead.`; }
+    }
+    return '';
+  }
   function renderOn(rule) {
     const el = $('#on-ctl'), lbl = $('#lbl-on');
     lbl.textContent = S.repeats === 'custom' ? 'Pattern' : 'On';
@@ -792,11 +811,18 @@ body { margin: 0; padding: 0 !important; }
         render(); $(`.day[data-i="${i}"]`).focus();
       });
     } else if (S.repeats === 'monthly') {
-      const label = S.monthDay === 'last' ? 'Last day of the month' : `The ${ord(S.monthDay)}`;
-      el.innerHTML = `<div class="dd-wrap" id="dom-dd"></div>
-        ${S.monthDay !== 'last' && S.monthDay > 28 ? `<p class="hint">In months without a ${ord(S.monthDay)}, it runs on the last day.</p>` : ''}`;
-      const opts = [...range(1, 31).map(n => ({ v: n, label: `The ${ord(n)}` })), { sep: true }, { v: 'last', label: 'Last day of the month' }];
-      dropdown($('#dom-dd'), { id: 'dom', labelledby: 'lbl-on', width: '220px', text: label, opts, value: S.monthDay, onPick: v => { S.monthDay = v; render(); $('#dom').focus(); } });
+      const high = S.monthDays.filter(m => m !== 'last' && m > 28).sort((x, y) => x - y);
+      el.innerHTML = `<div class="dom-grid" role="group" aria-labelledby="lbl-on">
+          ${range(1, 31).map(n => `<button type="button" class="dom-day" data-d="${n}" aria-pressed="${S.monthDays.includes(n)}" aria-label="The ${ord(n)}">${n}</button>`).join('')}
+        </div>
+        ${rule.field === 'days' ? `<p class="err">${icon('alert')}${rule.error}</p>`
+          : S.monthDays.includes(31) ? '<p class="hint">In months without a 31st, it runs on the last day of the month.</p>'
+          : '<p class="hint">Pick one or more days</p>'}`;
+      el.querySelectorAll('.dom-day').forEach(btn => btn.onclick = () => {
+        const v = btn.dataset.d === 'last' ? 'last' : +btn.dataset.d;
+        S.monthDays = S.monthDays.includes(v) ? S.monthDays.filter(x => x !== v) : [...S.monthDays, v];
+        render(); $(`.dom-day[data-d="${btn.dataset.d}"]`).focus();
+      });
     } else {
       const showErr = rule.field === 'cron' && touched.cron;
       el.innerHTML = `<div class="inline">
@@ -1088,6 +1114,7 @@ body { margin: 0; padding: 0 !important; }
     const dep = $('#deploy');
     dep.textContent = dirty ? 'Deploy' : 'Deployed';
     dep.disabled = !dirty || !!rule.error || !!readbackProblem || S.recipients.some(e => !validEmail(e));
+    if (typeof syncDone === 'function') syncDone();
   }
   $('#deploy').onclick = () => {
     deployed = JSON.parse(JSON.stringify(S)); version += 1; render();
@@ -1230,8 +1257,8 @@ body { margin: 0; padding: 0 !important; }
     const count = `<span class="sum-main">${l.length} ${l.length === 1 ? 'person' : 'people'}</span>`;
     const err = bad.length ? `<span class="sum-err">${icon('alert')}${bad.length} ${bad.length === 1 ? 'email' : 'emails'} could not be found</span>` : '';
     if (recipSumAll) {
-      // Problem addresses first, so they are seen before the rest.
-      const ordered = [...bad, ...l.filter(e => !flag(e))];
+      // Problem addresses last, so they don't crowd the error line above the list.
+      const ordered = [...l.filter(e => !flag(e)), ...bad];
       const items = ordered.map(e => `<li class="${flag(e) ? 'flag' : ''}" title="${nameOf(e) || e}">${flag(e) ? `<svg class="i" role="img" aria-label="Email not found"><use href="#i-alert"/></svg>` : ''}${name(e)}</li>`).join('');
       return count + err + `<ul class="sum-people">${items}</ul><span class="sum-less"><button type="button" class="link" id="recip-all">Show less</button></span>`;
     }
@@ -1245,6 +1272,13 @@ body { margin: 0; padding: 0 !important; }
     const next = rule.error ? null : runs(rule, effectiveFrom(), untilOf(), 1)[0];
     return esc(S.subject || '');
   };
+  // What each editor can change, so Done only lights up after a real change and Cancel can put it back.
+  const SECTION_KEYS = { schedule: ['repeats', 'dailyMode', 'weekDays', 'monthDays', 'time', 'tz', 'cron', 'startMode', 'start', 'endMode', 'end'], recipients: ['recipients'] };
+  const snap = {};
+  const sectionState = k => JSON.stringify(Object.fromEntries(SECTION_KEYS[k].map(f => [f, S[f]])));
+  const sectionChanged = k => !!snap[k] && sectionState(k) !== snap[k];
+  function closeSection(k) { open[k] = false; closeMenus(); closeCal(); render(); $('#act-' + k + ' button').focus(); }
+  function syncDone() { ['schedule', 'recipients'].forEach(k => { const d = open[k] && $('#act-' + k + ' [data-done]'); if (d) d.disabled = !sectionChanged(k); }); }
   function renderBlocks() {
     $('#sum-schedule').innerHTML = scheduleSummary();
     $('#sum-recipients').innerHTML = recipientSummary();
@@ -1254,11 +1288,15 @@ body { margin: 0; padding: 0 !important; }
       const act = $('#act-' + k);
       if (k === 'preview') { act.innerHTML = ''; return; } // always open
       {
-        act.innerHTML = open[k]
-          ? `<button type="button" class="btn tertiary" aria-expanded="true" aria-controls="body-${k}">Done</button>`
-          : `<button type="button" class="icon-btn" aria-expanded="false" aria-controls="body-${k}" aria-label="Edit ${k}">${icon('pencil')}</button>`;
+        if (open[k]) {
+          act.innerHTML = `<button type="button" class="btn tertiary sm" data-cancel>Cancel</button><button type="button" class="btn primary sm" data-done aria-controls="body-${k}" ${sectionChanged(k) ? '' : 'disabled'}>Done</button>`;
+          act.querySelector('[data-cancel]').onclick = () => { Object.assign(S, JSON.parse(snap[k])); closeSection(k); };
+          act.querySelector('[data-done]').onclick = () => closeSection(k);
+        } else {
+          act.innerHTML = `<button type="button" class="icon-btn" aria-expanded="false" aria-controls="body-${k}" aria-label="Edit ${k}">${icon('pencil')}</button>`;
+          act.firstElementChild.onclick = () => { snap[k] = sectionState(k); open[k] = true; closeMenus(); closeCal(); render(); };
+        }
       }
-      act.firstElementChild.onclick = () => { open[k] = !open[k]; closeMenus(); closeCal(); render(); act.firstElementChild && $('#act-' + k + ' button').focus(); };
     });
     renderPreview();
   }
