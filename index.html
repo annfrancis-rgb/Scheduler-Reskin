@@ -94,9 +94,10 @@ svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none;
 .head h1 { margin: 0; font: 500 16px/24px var(--aira-font-sans); min-width: 0; flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .head .ver, .head .pill, .head-actions { flex: none; }
 .ver { font: 500 12px/16px var(--aira-font-sans); color: var(--aira-text-secondary); border: 1px solid var(--aira-border-default); border-radius: var(--aira-radius-pill); padding: 2px var(--aira-sp-2); }
-.pill { display: inline-flex; align-items: center; gap: var(--aira-sp-1); padding: 2px 10px; font: 500 12px/16px var(--aira-font-sans); border-radius: var(--aira-radius-pill); } /* matches the published AiraPill */
-.pill-draft { background: var(--aira-approval-draft-bg); color: var(--pill-label); }
-.pill-live { background: var(--aira-approval-live-bg); color: var(--pill-label); }
+.pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; font: 500 12px/16px var(--aira-font-sans); border-radius: var(--aira-radius-pill); } /* the published status pill, with its leading dot */
+.pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; flex: none; }
+.pill-draft { background: #EEF1F4; color: #364152; } .pill-draft::before { background: #9AA4B2; } /* slate-100 / 700 / 400 */
+.pill-live { background: #E7F6EC; color: #185C32; } .pill-live::before { background: #2A9D55; } /* green-50 / 600 / 400 */
 .head .grow { flex: 1; }
 .head-actions { display: flex; align-items: center; gap: var(--aira-sp-2); margin-left: auto; }
 .head-actions .btn { height: 32px; padding: 0 var(--aira-sp-3); }
@@ -264,6 +265,7 @@ svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none;
 @media (max-width: 599px) { .tok { height: 32px; } .tok .x { width: 28px; height: 28px; } }
 /* Collapsible blocks: summary line by default, editor on demand */
 .block + .block { border-top: 1px solid var(--aira-border-default); }
+.pv-note { grid-column: 1 / -1; grid-row: 2; margin: 2px 0 0; font: 400 13px/20px var(--aira-font-sans); color: var(--aira-text-tertiary); } /* when this preview was made */
 .blk-head { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; align-items: start; column-gap: var(--aira-sp-4); padding: var(--aira-sp-5); }
 .blk-head h2 { margin: 0; font: 500 14px/20px var(--aira-font-sans); color: var(--aira-text-primary); }
 .blk-sum { margin: 0; min-width: 0; font: 400 14px/20px var(--aira-font-sans); color: var(--aira-text-secondary); display: flex; flex-wrap: wrap; column-gap: var(--aira-sp-2); }
@@ -528,6 +530,25 @@ body { margin: 0; padding: 0 !important; }
     </div>
   </header>
 
+  <section class="block" id="blk-preview" aria-labelledby="prev-h">
+    <div class="blk-head">
+      <h2 id="prev-h">Preview</h2>
+      <span id="sum-preview" hidden></span>
+      <span class="blk-act" id="act-preview"></span>
+      <p class="pv-note">Preview generated Oct 14, 2026 at 5:46 PM.</p>
+    </div>
+    <div class="blk-body" id="body-preview"></div>
+  </section>
+
+  <section class="block" id="blk-recipients" aria-labelledby="recip-h">
+    <div class="blk-head">
+      <h2 id="recip-h">Recipients</h2>
+      <p class="blk-sum" id="sum-recipients"></p>
+      <span class="blk-act" id="act-recipients"></span>
+    </div>
+    <div class="blk-body" id="body-recipients"><div id="recip"></div></div>
+  </section>
+
   <section class="block" id="blk-schedule" aria-labelledby="sched-h">
     <div class="blk-head">
       <h2 id="sched-h">Schedule</h2>
@@ -556,24 +577,6 @@ body { margin: 0; padding: 0 !important; }
       </div>
       <div class="readback" id="readback" aria-live="polite"></div>
     </div>
-  </section>
-
-  <section class="block" id="blk-recipients" aria-labelledby="recip-h">
-    <div class="blk-head">
-      <h2 id="recip-h">Recipients</h2>
-      <p class="blk-sum" id="sum-recipients"></p>
-      <span class="blk-act" id="act-recipients"></span>
-    </div>
-    <div class="blk-body" id="body-recipients"><div id="recip"></div></div>
-  </section>
-
-  <section class="block" id="blk-preview" aria-labelledby="prev-h">
-    <div class="blk-head">
-      <h2 id="prev-h">Preview</h2>
-      <span id="sum-preview" hidden></span>
-      <span class="blk-act" id="act-preview"></span>
-    </div>
-    <div class="blk-body" id="body-preview"></div>
   </section>
 </main>
   </div>
